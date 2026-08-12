@@ -36,9 +36,17 @@ def get_grandmaster_league():
     return _get(url).json()
 
 
+def get_master_league():
+    url = f"https://{REGION_PLATFORM}.api.riotgames.com/tft/league/v1/master"
+    return _get(url).json()
+
+
+def get_league_entries(tier, division, page=1):
+    url = f"https://{REGION_PLATFORM}.api.riotgames.com/tft/league/v1/entries/{tier}/{division}"
+    return _get(url, params={"queue": "RANKED_TFT", "page": page}).json()
+
+
 def get_summoner_by_id(summoner_id):
-    """Kept for completeness: less used in the main flow since
-    puuid is provided directly by ladder entries."""
     url = f"https://{REGION_PLATFORM}.api.riotgames.com/tft/summoner/v1/summoners/{summoner_id}"
     return _get(url).json()
 

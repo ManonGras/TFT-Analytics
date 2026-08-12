@@ -1,6 +1,7 @@
-# Environnement virtuel
+# Virtual environment
 venv/
 
+.env
 # Secrets
 .env
 
@@ -13,11 +14,11 @@ __pycache__/
 # Jupyter
 .ipynb_checkpoints/
 
-# Base de données locale
+# Local database
 *.db
 *.sqlite3
 
-# Données brutes issues de l'API
+# Raw API data
 data/raw/*
 !data/raw/.gitkeep
 data/processed/*
@@ -27,6 +28,6 @@ data/processed/*
 .DS_Store
 Thumbs.db
 
-# Éditeurs
+# Editors
 .vscode/
 .idea/

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from typing import Optional
-from sqlalchemy import ForeignKey, create_engine
+from sqlalchemy import ForeignKey, create_engine, inspect, text
 from sqlalchemy.orm import (
     DeclarativeBase,
     Mapped,
@@ -29,6 +29,7 @@ class Match(Base):
     tft_set_core_name: Mapped[Optional[str]]
     tft_game_type: Mapped[Optional[str]]
     queue_id: Mapped[Optional[int]]
+    seed_tier: Mapped[Optional[str]]
 
     participants: Mapped[list["Participant"]] = relationship(
         back_populates="match", cascade="all, delete-orphan"
@@ -102,11 +103,6 @@ class ParticipantTrait(Base):
 
 
 class ParticipantAugment(Base):
-    """Table intentionally kept separate and nullable-friendly:
-    the API did not expose this field on tested matches to date.
-    We keep the table ready in case the field appears in other
-    matches/patches, without blocking ingestion if it remains empty."""
-
     __tablename__ = "participant_augments"
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
@@ -123,6 +119,16 @@ def get_engine():
 def init_db():
     engine = get_engine()
     Base.metadata.create_all(engine)
+
+    inspector = inspect(engine)
+    if "matches" in inspector.get_table_names():
+        existing_columns = {col["name"] for col in inspector.get_columns("matches")}
+        if "seed_tier" not in existing_columns:
+            with engine.begin() as conn:
+                conn.execute(text("ALTER TABLE matches ADD COLUMN seed_tier VARCHAR"))
+
+                conn.execute(text("UPDATE matches SET seed_tier = 'MASTER_PLUS' WHERE seed_tier IS NULL"))
+
     return engine
 
 

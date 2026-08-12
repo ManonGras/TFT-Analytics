@@ -6,7 +6,14 @@ from pathlib import Path
 from tqdm import tqdm
 from requests.exceptions import HTTPError
 
-from riot_client import get_challenger_league, get_match_ids_by_puuid, get_match_by_id
+from riot_client import (
+    get_challenger_league,
+    get_grandmaster_league,
+    get_master_league,
+    get_league_entries,
+    get_match_ids_by_puuid,
+    get_match_by_id,
+)
 from db import (
     init_db,
     get_session,
@@ -20,15 +27,22 @@ from db import (
 
 RAW_DIR = Path("data/raw")
 REQUEST_DELAY_SECONDS = 1.2
+TARGET_SET_NUMBER = 17
+
+# Tiers with no divisions: seeded directly from their dedicated endpoint.
+APEX_TIERS = ["CHALLENGER", "GRANDMASTER", "MASTER"]
+# Tiers split into divisions I-IV: seeded via the paginated entries endpoint.
+DIVISION_TIERS = ["DIAMOND", "EMERALD", "PLATINUM", "GOLD", "SILVER", "BRONZE", "IRON"]
+DIVISIONS = ["I", "II", "III", "IV"]
 
 def save_raw_match(match_id, match_json):
     RAW_DIR.mkdir(parents=True, exist_ok=True)
-    path= RAW_DIR / f"{match_id}.json"
+    path = RAW_DIR / f"{match_id}.json"
     if not path.exists():
         path.write_text(json.dumps(match_json), encoding="utf-8")
     return path
 
-def parse_match(match_json) -> Match:
+def parse_match(match_json, seed_tier=None) -> Match:
     info = match_json["info"]
     metadata = match_json["metadata"]
 
@@ -42,6 +56,7 @@ def parse_match(match_json) -> Match:
         tft_set_core_name=info.get("tft_set_core_name"),
         tft_game_type=info.get("tft_game_type"),
         queue_id=info.get("queue_id", info.get("queueId")),
+        seed_tier=seed_tier,
     )
 
     for p in info["participants"]:
@@ -85,32 +100,69 @@ def parse_match(match_json) -> Match:
 
     return match
 
-def collect_seed_puuids(max_players):
-    challenger = get_challenger_league()
-    entries = challenger["entries"]
-    puuids = [e["puuid"] for e in entries if "puuid" in e]
-    return puuids[:max_players]
+def _take_unique(entries, seen, limit):
+    puuids = []
+    for entry in entries:
+        puuid = entry.get("puuid")
+        if not puuid or puuid in seen:
+            continue
+        seen.add(puuid)
+        puuids.append(puuid)
+        if len(puuids) >= limit:
+            break
+    return puuids
 
-def collect_match_ids(puuids, matches_per_player):
-    match_ids = set()
-    for puuid in tqdm(puuids, desc="Retrieving matches list"):
-        ids = get_match_ids_by_puuid(puuid, count=matches_per_player)
-        match_ids.update(ids)
-        time.sleep(REQUEST_DELAY_SECONDS)
-    return match_ids
+def collect_seed_puuids(players_per_tier):
+    seen = set()
+    seed_by_tier = {}
 
-def ingest_matches(match_ids, session):
-    already_id_db = {m.match_id for m in session.query(Match.match_id).all()}
-    to_fetch = [m for m in match_ids if m not in already_id_db]
+    seed_by_tier["CHALLENGER"] = _take_unique(get_challenger_league()["entries"], seen, players_per_tier)
+    seed_by_tier["GRANDMASTER"] = _take_unique(get_grandmaster_league()["entries"], seen, players_per_tier)
+    seed_by_tier["MASTER"] = _take_unique(get_master_league()["entries"], seen, players_per_tier)
 
-    print(f"Found {len(match_ids)} unique matches, {len(to_fetch)} to download "
-         f"({len(match_ids) - len(to_fetch)} already in DB).")
+    for tier in DIVISION_TIERS:
+        collected = []
+        for division in DIVISIONS:
+            if len(collected) >= players_per_tier:
+                break
+            page = 1
+            while len(collected) < players_per_tier:
+                entries = get_league_entries(tier, division, page)
+                if not entries:
+                    break
+                collected.extend(_take_unique(entries, seen, players_per_tier - len(collected)))
+                page += 1
+        seed_by_tier[tier] = collected
+
+    return seed_by_tier
+
+def collect_match_ids(seed_by_tier, matches_per_player):
+    match_tier = {}
+    for tier, puuids in seed_by_tier.items():
+        for puuid in tqdm(puuids, desc=f"Retrieving matches list ({tier})"):
+            for match_id in get_match_ids_by_puuid(puuid, count=matches_per_player):
+                match_tier.setdefault(match_id, tier)
+            time.sleep(REQUEST_DELAY_SECONDS)
+    return match_tier
+
+def ingest_matches(match_tier, session):
+    already_in_db = {m.match_id for m in session.query(Match.match_id).all()}
+    to_fetch = {mid: tier for mid, tier in match_tier.items() if mid not in already_in_db}
+
+    print(f"Found {len(match_tier)} unique matches, {len(to_fetch)} to download "
+         f"({len(match_tier) - len(to_fetch)} already in DB).")
+    skipped_other_set = 0
     failures = []
-    for match_id in tqdm(to_fetch, desc="Ingesting matches"):
+    for match_id, tier in tqdm(to_fetch.items(), desc="Ingesting matches"):
         try:
             match_json = get_match_by_id(match_id)
             save_raw_match(match_id, match_json)
-            match = parse_match(match_json)
+
+            if match_json["info"].get("tft_set_number") != TARGET_SET_NUMBER:
+                skipped_other_set += 1
+                continue
+
+            match = parse_match(match_json, seed_tier=tier)
             session.add(match)
             session.commit()
         except HTTPError as exc:
@@ -121,6 +173,10 @@ def ingest_matches(match_ids, session):
             failures.append((match_id, f"parsing error: {exc}"))
         time.sleep(REQUEST_DELAY_SECONDS)
 
+    if skipped_other_set:
+        print(f"\nSkipped {skipped_other_set} matches from a different set "
+              f"(target: set {TARGET_SET_NUMBER}).")
+
     if failures:
         print(f"\n{len(failures)}matches failed to ingest:")
         for match_id, reason in failures[:10]:
@@ -130,8 +186,8 @@ def ingest_matches(match_ids, session):
 
 def main():
     parser = argparse.ArgumentParser(description="Ingest TFT matches from the Riot API.")
-    parser.add_argument("--players", type=int, default=10,
-                         help="Number of Challenger players to use as seeds (default: 10).")
+    parser.add_argument("--players-per-tier", type=int, default=5,
+                         help="Number of seed players per rank tier (default: 5).")
     parser.add_argument("--matches-per-player", type=int, default=20,
                          help="Number of recent matches per player (default: 20, API max: 20).")
     args = parser.parse_args()
@@ -139,11 +195,12 @@ def main():
     init_db()
     session = get_session()
 
-    puuids = collect_seed_puuids(args.players)
-    print(f"{len(puuids)} seed players selected.")
+    seed_by_tier = collect_seed_puuids(args.players_per_tier)
+    for tier, puuids in seed_by_tier.items():
+        print(f"  {tier}: {len(puuids)} seed players")
 
-    match_ids = collect_match_ids(puuids, args.matches_per_player)
-    ingest_matches(match_ids, session)
+    match_tier = collect_match_ids(seed_by_tier, args.matches_per_player)
+    ingest_matches(match_tier, session)
 
     session.close()
     print("Done.")
