@@ -28,6 +28,7 @@ from db import (
 RAW_DIR = Path("data/raw")
 REQUEST_DELAY_SECONDS = 1.2
 TARGET_SET_NUMBER = 17
+RANKED_QUEUE_ID = 1100
 
 # Tiers with no divisions: seeded directly from their dedicated endpoint.
 APEX_TIERS = ["CHALLENGER", "GRANDMASTER", "MASTER"]
@@ -152,14 +153,20 @@ def ingest_matches(match_tier, session):
     print(f"Found {len(match_tier)} unique matches, {len(to_fetch)} to download "
          f"({len(match_tier) - len(to_fetch)} already in DB).")
     skipped_other_set = 0
+    skipped_other_queue = 0
     failures = []
     for match_id, tier in tqdm(to_fetch.items(), desc="Ingesting matches"):
         try:
             match_json = get_match_by_id(match_id)
             save_raw_match(match_id, match_json)
+            info = match_json["info"]
 
-            if match_json["info"].get("tft_set_number") != TARGET_SET_NUMBER:
+            if info.get("tft_set_number") != TARGET_SET_NUMBER:
                 skipped_other_set += 1
+                continue
+
+            if info.get("queue_id", info.get("queueId")) != RANKED_QUEUE_ID:
+                skipped_other_queue += 1
                 continue
 
             match = parse_match(match_json, seed_tier=tier)
@@ -176,6 +183,9 @@ def ingest_matches(match_tier, session):
     if skipped_other_set:
         print(f"\nSkipped {skipped_other_set} matches from a different set "
               f"(target: set {TARGET_SET_NUMBER}).")
+    if skipped_other_queue:
+        print(f"\nSkipped {skipped_other_queue} matches from a non-ranked queue "
+              f"(target: queue {RANKED_QUEUE_ID}).")
 
     if failures:
         print(f"\n{len(failures)}matches failed to ingest:")
@@ -189,7 +199,7 @@ def main():
     parser.add_argument("--players-per-tier", type=int, default=5,
                          help="Number of seed players per rank tier (default: 5).")
     parser.add_argument("--matches-per-player", type=int, default=20,
-                         help="Number of recent matches per player (default: 20, API max: 20).")
+                         help="Number of recent matches per player (default: 20)")
     args = parser.parse_args()
 
     init_db()
