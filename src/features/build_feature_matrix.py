@@ -4,6 +4,14 @@ import pandas as pd
 
 from db import get_engine
 
+EXCLUDED_CHARACTER_IDS = (
+    "TFT17_Summon",
+    "TFT17_IvernMinion",
+    "tft17_bardfollower",
+    "TFT17_PVE_ElderDragon",
+    "TFT17_Enemy_Aatrox",
+)
+
 
 def extract_patch(game_version):
     match = re.search(r"(\d+\.\d+)\.", game_version)
@@ -82,6 +90,7 @@ def load_champion_features(engine):
         """,
         engine,
     )
+    units = units[~units["character_id"].isin(EXCLUDED_CHARACTER_IDS)]
     wide = units.pivot_table(
         index="participant_id", columns="character_id", values="tier",
         aggfunc="max", fill_value=0,
