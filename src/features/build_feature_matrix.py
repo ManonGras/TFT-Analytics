@@ -61,9 +61,14 @@ def load_item_features(engine):
         """,
         engine,
     )
+    # A separate constant column to count, rather than reusing item_name as
+    # both columns= and values=: pandas 2.2.3 (the version pinned for this
+    # project) silently returns zero columns when the same column is used for
+    # both, instead of raising an error.
+    items["count"] = 1
     wide = items.pivot_table(
-        index="participant_id", columns="item_name", values="item_name",
-        aggfunc="count", fill_value=0,
+        index="participant_id", columns="item_name", values="count",
+        aggfunc="sum", fill_value=0,
     )
     wide.columns = [f"item__{c}" for c in wide.columns]
     return wide
