@@ -4,12 +4,19 @@ from db import get_engine
 
 MIN_PARTICIPANTS_FOR_STATS = 200
 
+# Riot fills empty slots in some lobbies with AI opponents, tagged
+# with this literal puuid. They are not real players so we shouldnt analyse
+# the way they play
+BOT_PUUID = "BOT"
+
+
 def load_participants(engine):
     return pd.read_sql(
-        """
+        f"""
         SELECT p.id AS participant_id, p.placement, m.seed_tier
         FROM participants p
         JOIN matches m ON m.match_id = p.match_id
+        WHERE p.puuid != '{BOT_PUUID}'
         """,
         engine,
     )
@@ -17,12 +24,12 @@ def load_participants(engine):
 
 def load_active_traits(engine):
     return pd.read_sql(
-        """
+        f"""
         SELECT p.id AS participant_id, p.placement, m.seed_tier, t.trait_name
         FROM participant_traits t
         JOIN participants p ON p.id = t.participant_id
         JOIN matches m ON m.match_id = p.match_id
-        WHERE t.tier_current > 0
+        WHERE t.tier_current > 0 AND p.puuid != '{BOT_PUUID}'
         """,
         engine,
     )
@@ -30,12 +37,13 @@ def load_active_traits(engine):
 
 def load_items(engine):
     return pd.read_sql(
-        """
+        f"""
         SELECT p.id AS participant_id, p.placement, m.seed_tier, i.item_name
         FROM participant_unit_items i
         JOIN participant_units u ON u.id = i.unit_id
         JOIN participants p ON p.id = u.participant_id
         JOIN matches m ON m.match_id = p.match_id
+        WHERE p.puuid != '{BOT_PUUID}'
         """,
         engine,
     )
