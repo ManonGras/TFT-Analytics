@@ -9,6 +9,8 @@ HIGH_TIERS = {"MASTER", "GRANDMASTER", "CHALLENGER", "MASTER_PLUS"}
 MIN_PICKS_PER_BUCKET = 30
 TOP_N = 10
 
+ARCHETYPE_CLUSTERS_PATH = "data/processed/archetype_clusters.csv"
+
 
 def bucket_of(tier):
     if tier in LOW_TIERS:
@@ -22,6 +24,14 @@ def add_bucket(df):
     df = df.copy()
     df["seed_tier"] = df["seed_tier"].map(bucket_of)
     return df.dropna(subset=["seed_tier"])
+
+
+def load_archetype_assignments():
+    """Each participant belongs to exactly one archetype cluster, this is
+    a pick rate over whole compositions, not individual items, champions..."""
+    return pd.read_csv(ARCHETYPE_CLUSTERS_PATH)[
+        ["participant_id", "seed_tier", "placement", "archetype_cluster"]
+    ]
 
 
 def build_gap_table(summary_df):
@@ -76,7 +86,14 @@ def main():
     print_gap_report(item_gap, "Items")
     item_gap.to_csv("data/processed/item_skill_gap.csv")
 
-    print("\nFull gap tables saved to data/processed/trait_skill_gap.csv and item_skill_gap.csv")
+    archetypes = add_bucket(load_archetype_assignments())
+    archetype_summary = summarize(archetypes, participants_per_bucket, "archetype_cluster")
+    archetype_gap = build_gap_table(archetype_summary)
+    print_gap_report(archetype_gap, "Archetypes")
+    archetype_gap.to_csv("data/processed/archetype_skill_gap.csv")
+
+    print("\nFull gap tables saved to data/processed/trait_skill_gap.csv, "
+          "item_skill_gap.csv, and archetype_skill_gap.csv")
 
 
 if __name__ == "__main__":
