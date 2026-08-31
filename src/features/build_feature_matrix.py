@@ -12,6 +12,11 @@ EXCLUDED_CHARACTER_IDS = (
     "TFT17_Enemy_Aatrox",
 )
 
+# Riot fills empty slots in low-population lobbies with AI opponents, tagged
+# with this literal puuid. They are not real players and must not appear in
+# any composition/placement analysis.
+BOT_PUUID = "BOT"
+
 
 def extract_patch(game_version):
     match = re.search(r"(\d+\.\d+)\.", game_version)
@@ -20,7 +25,7 @@ def extract_patch(game_version):
 
 def load_base(engine):
     df = pd.read_sql(
-        """
+        f"""
         SELECT
             p.id AS participant_id,
             p.match_id,
@@ -35,6 +40,7 @@ def load_base(engine):
             m.game_version
         FROM participants p
         JOIN matches m ON m.match_id = p.match_id
+        WHERE p.puuid != '{BOT_PUUID}'
         """,
         engine,
     )
