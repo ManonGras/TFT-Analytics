@@ -25,9 +25,9 @@ from db import (
     ParticipantAugment,
 )
 
-RAW_DIR = Path("data/raw")
+RAW_DIR = Path(__file__).resolve().parent.parent / "data" / "raw"
 REQUEST_DELAY_SECONDS = 1.2
-TARGET_SET_NUMBER = 17
+TARGET_SET_NUMBER = 18
 RANKED_QUEUE_ID = 1100
 
 # Tiers with no divisions: seeded directly from their dedicated endpoint.

@@ -62,8 +62,9 @@ def main():
     print("keys of a participant:", list(match["info"]["participants"][0].keys()))
 
     # Save for detailed manual inspection
-    Path("data/raw").mkdir(parents=True, exist_ok=True)
-    out_path = Path("data/raw") / f"{match_ids[0]}.json"
+    raw_dir = Path(__file__).resolve().parent.parent / "data" / "raw"
+    raw_dir.mkdir(parents=True, exist_ok=True)
+    out_path = raw_dir / f"{match_ids[0]}.json"
     out_path.write_text(json.dumps(match, indent=2), encoding="utf-8")
     print(f"\nFull match saved to {out_path} for manual inspection.")
 
