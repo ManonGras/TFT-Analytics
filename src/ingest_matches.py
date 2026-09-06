@@ -14,6 +14,7 @@ from riot_client import (
     get_match_ids_by_puuid,
     get_match_by_id,
 )
+from config import TFT_SET_NUMBER
 from db import (
     init_db,
     get_session,
@@ -27,7 +28,7 @@ from db import (
 
 RAW_DIR = Path(__file__).resolve().parent.parent / "data" / "raw"
 REQUEST_DELAY_SECONDS = 1.2
-TARGET_SET_NUMBER = 18
+TARGET_SET_NUMBER = TFT_SET_NUMBER
 RANKED_QUEUE_ID = 1100
 
 # Tiers with no divisions: seeded directly from their dedicated endpoint.

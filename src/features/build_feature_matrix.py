@@ -3,14 +3,7 @@ import re
 import pandas as pd
 
 from db import get_engine
-
-EXCLUDED_CHARACTER_IDS = (
-    "TFT17_Summon",
-    "TFT17_IvernMinion",
-    "tft17_bardfollower",
-    "TFT17_PVE_ElderDragon",
-    "TFT17_Enemy_Aatrox",
-)
+from set_paths import excluded_character_ids, feature_matrix_path
 
 # Riot fills empty slots in low-population lobbies with AI opponents, tagged
 # with this literal puuid. They are not real players and must not appear in
@@ -37,6 +30,7 @@ def load_base(engine):
             p.time_eliminated,
             p.total_damage_to_players,
             m.seed_tier,
+            m.game_datetime,
             m.game_version
         FROM participants p
         JOIN matches m ON m.match_id = p.match_id
@@ -96,7 +90,7 @@ def load_champion_features(engine):
         """,
         engine,
     )
-    units = units[~units["character_id"].isin(EXCLUDED_CHARACTER_IDS)]
+    units = units[~units["character_id"].isin(excluded_character_ids(engine))]
     wide = units.pivot_table(
         index="participant_id", columns="character_id", values="tier",
         aggfunc="max", fill_value=0,
@@ -134,7 +128,7 @@ def main():
     feature_cols = [c for c in matrix.columns if c.startswith(("trait__", "item__", "champ__"))]
     matrix[feature_cols] = matrix[feature_cols].fillna(0)
 
-    out_path = "data/processed/feature_matrix.csv"
+    out_path = feature_matrix_path()
     matrix.to_csv(out_path)
     print(f"\nSaved {matrix.shape[0]} rows x {matrix.shape[1]} columns to {out_path}")
 
