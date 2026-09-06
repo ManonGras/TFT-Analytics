@@ -1,6 +1,7 @@
 import pandas as pd
 
 from db import get_engine
+from set_paths import set_suffixed_path
 
 MIN_PARTICIPANTS_FOR_STATS = 200
 
@@ -88,17 +89,20 @@ def main():
         print(f"\nWarning: low sample size for {list(small_tiers.index)} "
               f"(< {MIN_PARTICIPANTS_FOR_STATS} participants) - treat their rates as indicative only.")
 
+    trait_path = set_suffixed_path("trait_summary_by_tier", "csv")
+    item_path = set_suffixed_path("item_summary_by_tier", "csv")
+
     traits = load_active_traits(engine)
     trait_summary = summarize(traits, participants_per_tier, "trait_name")
-    trait_summary.to_csv("data/processed/trait_summary_by_tier.csv", index=False)
+    trait_summary.to_csv(trait_path, index=False)
     print_top_per_tier(trait_summary, "trait_name", "Traits")
 
     items = load_items(engine)
     item_summary = summarize(items, participants_per_tier, "item_name")
-    item_summary.to_csv("data/processed/item_summary_by_tier.csv", index=False)
+    item_summary.to_csv(item_path, index=False)
     print_top_per_tier(item_summary, "item_name", "Items")
 
-    print("\nFull summaries saved to data/processed/trait_summary_by_tier.csv and item_summary_by_tier.csv")
+    print(f"\nFull summaries saved to {trait_path} and {item_path}")
 
 
 if __name__ == "__main__":

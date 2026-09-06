@@ -3,7 +3,9 @@ import pandas as pd
 from sklearn.cluster import KMeans
 from sklearn.metrics import silhouette_score
 
-FEATURE_MATRIX_PATH = "data/processed/feature_matrix.csv"
+from set_paths import feature_matrix_path, set_suffixed_path
+
+FEATURE_MATRIX_PATH = feature_matrix_path()
 K_CANDIDATES = [8, 10, 12, 15, 18, 22, 26, 30]
 SCAN_SAMPLE_SIZE = 15000
 RANDOM_STATE = 42
@@ -110,7 +112,9 @@ def print_cluster_reports(df, X, raw, labels):
         ))
 
 
-def save_cluster_assignments(df, labels, out_path="data/processed/archetype_clusters.csv"):
+def save_cluster_assignments(df, labels, out_path=None):
+    if out_path is None:
+        out_path = set_suffixed_path("archetype_clusters", "csv")
     out = df.copy()
     out["archetype_cluster"] = labels
     out[["participant_id", "match_id", "seed_tier", "patch", "placement", "archetype_cluster"]].to_csv(

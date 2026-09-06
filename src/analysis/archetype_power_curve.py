@@ -1,8 +1,9 @@
 import pandas as pd
 
 from db import get_engine
+from set_paths import set_suffixed_path
 
-CLUSTERS_PATH = "data/processed/archetype_clusters.csv"
+CLUSTERS_PATH = set_suffixed_path("archetype_clusters", "csv")
 
 
 def load_power_curve_data(engine):
@@ -62,7 +63,7 @@ def main():
     print("\nPower curve by archetype:")
     print(summary.to_string())
 
-    out_path = "data/processed/archetype_power_curve.csv"
+    out_path = set_suffixed_path("archetype_power_curve", "csv")
     summary.to_csv(out_path)
     print(f"\nSaved to {out_path}")
 

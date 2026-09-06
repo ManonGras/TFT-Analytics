@@ -1,6 +1,8 @@
 import pandas as pd
 
-CLUSTERS_PATH = "data/processed/archetype_clusters.csv"
+from set_paths import set_suffixed_path
+
+CLUSTERS_PATH = set_suffixed_path("archetype_clusters", "csv")
 
 
 def load_data():
@@ -63,7 +65,7 @@ def main():
     print("\nDelta, uncontested -> 2+ contesting (positive = worse when contested):")
     print(pivot_placement["delta_uncontested_to_2plus"].sort_values(ascending=False).round(3).to_string())
 
-    out_path = "data/processed/archetype_contest.csv"
+    out_path = set_suffixed_path("archetype_contest", "csv")
     summary.to_csv(out_path, index=False)
     print(f"\nSaved to {out_path}")
 

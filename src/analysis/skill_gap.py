@@ -1,6 +1,7 @@
 import pandas as pd
 
 from db import get_engine
+from set_paths import set_suffixed_path
 from analysis.tier_comparison import load_participants, load_active_traits, load_items, summarize
 
 LOW_TIERS = {"IRON", "BRONZE", "SILVER"}
@@ -9,7 +10,7 @@ HIGH_TIERS = {"MASTER", "GRANDMASTER", "CHALLENGER", "MASTER_PLUS"}
 MIN_PICKS_PER_BUCKET = 30
 TOP_N = 10
 
-ARCHETYPE_CLUSTERS_PATH = "data/processed/archetype_clusters.csv"
+ARCHETYPE_CLUSTERS_PATH = set_suffixed_path("archetype_clusters", "csv")
 
 
 def bucket_of(tier):
@@ -74,26 +75,29 @@ def main():
     print("Participants per bucket:")
     print(participants_per_bucket.to_string())
 
+    trait_path = set_suffixed_path("trait_skill_gap", "csv")
+    item_path = set_suffixed_path("item_skill_gap", "csv")
+    archetype_path = set_suffixed_path("archetype_skill_gap", "csv")
+
     traits = add_bucket(load_active_traits(engine))
     trait_summary = summarize(traits, participants_per_bucket, "trait_name")
     trait_gap = build_gap_table(trait_summary)
     print_gap_report(trait_gap, "Traits")
-    trait_gap.to_csv("data/processed/trait_skill_gap.csv")
+    trait_gap.to_csv(trait_path)
 
     items = add_bucket(load_items(engine))
     item_summary = summarize(items, participants_per_bucket, "item_name")
     item_gap = build_gap_table(item_summary)
     print_gap_report(item_gap, "Items")
-    item_gap.to_csv("data/processed/item_skill_gap.csv")
+    item_gap.to_csv(item_path)
 
     archetypes = add_bucket(load_archetype_assignments())
     archetype_summary = summarize(archetypes, participants_per_bucket, "archetype_cluster")
     archetype_gap = build_gap_table(archetype_summary)
     print_gap_report(archetype_gap, "Archetypes")
-    archetype_gap.to_csv("data/processed/archetype_skill_gap.csv")
+    archetype_gap.to_csv(archetype_path)
 
-    print("\nFull gap tables saved to data/processed/trait_skill_gap.csv, "
-          "item_skill_gap.csv, and archetype_skill_gap.csv")
+    print(f"\nFull gap tables saved to {trait_path}, {item_path}, and {archetype_path}")
 
 
 if __name__ == "__main__":
