@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 import shap
 
+from set_paths import set_suffixed_path
 from modeling.train_model import load_and_prepare, train
 
 SAMPLE_SIZE = 2000
@@ -48,7 +49,7 @@ def main():
     sample, shap_values = compute_shap_values(model, X_test)
 
     summary = shap_summary_table(sample, shap_values)
-    out_path = "data/processed/shap_feature_importance.csv"
+    out_path = set_suffixed_path("shap_feature_importance", "csv")
     summary.to_csv(out_path)
     print(f"Saved full ranking (with signed mean) to {out_path}")
 
@@ -61,7 +62,8 @@ def main():
     print(category_breakdown(sample, shap_values, test_df, "seed_tier").to_string())
 
     print("\n--- patch: mean SHAP contribution per patch ---")
-    print("(only 16.15/16.16 appear here - the test set only covers those two held-out patches)")
+    print("(the test set includes only the most recent matches, as determined by TEST_FRACTION in "
+            "train_model.py.")
     print(category_breakdown(sample, shap_values, test_df, "patch").to_string())
 
     print("\nRendering SHAP beeswarm plot")
@@ -71,7 +73,7 @@ def main():
 
     plt.figure()
     shap.summary_plot(shap_values, sample, max_display=25, show=False)
-    plot_path = "data/processed/shap_summary_plot.png"
+    plot_path = set_suffixed_path("shap_summary_plot", "png")
     plt.savefig(plot_path, bbox_inches="tight", dpi=150)
     print(f"Saved plot to {plot_path}")
 
