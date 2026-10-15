@@ -14,7 +14,12 @@ EXCLUDED_CHARACTER_IDS_BY_SET = {
         "TFT17_PVE_ElderDragon",
         "TFT17_Enemy_Aatrox",
     ),
-    18: (),
+    # Found once the dataset grew past ~135k participants: TFT18_SprykinSummonMelee is the
+    # Sprykin trait's summoned companion (a real unit fielded on the board, not a player pick),
+    # confirmed at 1 occurrence out of 314,774 participants. Revisit again if more turn up.
+    18: (
+        "TFT18_SprykinSummonMelee",
+    ),
 }
 
 

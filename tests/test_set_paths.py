@@ -39,9 +39,9 @@ def test_excluded_character_ids_returns_set17_list_for_set17_db():
     assert set_paths.excluded_character_ids(engine) == set_paths.EXCLUDED_CHARACTER_IDS_BY_SET[17]
 
 
-def test_excluded_character_ids_returns_empty_for_set18_db():
+def test_excluded_character_ids_returns_set18_list_for_set18_db():
     engine = _engine_with_matches([18, 18])
-    assert set_paths.excluded_character_ids(engine) == ()
+    assert set_paths.excluded_character_ids(engine) == ("TFT18_SprykinSummonMelee",)
 
 
 def test_excluded_character_ids_warns_and_returns_empty_for_unknown_set(capsys):
