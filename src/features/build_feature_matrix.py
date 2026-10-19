@@ -1,5 +1,7 @@
 import re
+from pathlib import Path
 
+import numpy as np
 import pandas as pd
 
 from db import get_engine
@@ -10,10 +12,62 @@ from set_paths import excluded_character_ids, feature_matrix_path
 # any composition/placement analysis.
 BOT_PUUID = "BOT"
 
+# Official patch release dates. Since Set 18 (Unreal engine), game_version is
+# a placeholder ("TFT Unreal Version ?.?.?.?") with no patch number, so the
+# patch is inferred from the match date instead. A patch starts at 00:00 UTC
+# on its release date: matches played on a release day before the actual
+# deployment are attributed to the new patch (Riot does not publish exact
+# per-region deployment times).
+PATCH_CALENDAR_PATH = Path(__file__).resolve().parents[2] / "data" / "external" / "tft_patch_calendar.csv"
+PATCH_PATTERN = r"\d+\.\d+"
+
 
 def extract_patch(game_version):
     match = re.search(r"(\d+\.\d+)\.", game_version)
     return match.group(1) if match else game_version
+
+
+def load_patch_calendar(path=PATCH_CALENDAR_PATH):
+    calendar = pd.read_csv(path, dtype={"patch": str}, parse_dates=["release_date"])
+    return calendar.sort_values("release_date").reset_index(drop=True)
+
+
+def patch_from_date(game_datetime_ms, calendar):
+    """Patch in effect at each match date (game_datetime in ms, UTC). Dates
+    before the first release in the calendar get NaN."""
+    dates = pd.to_datetime(pd.Series(game_datetime_ms), unit="ms")
+    idx = np.searchsorted(calendar["release_date"].to_numpy(), dates.to_numpy(), side="right") - 1
+    patches = calendar["patch"].to_numpy()[np.clip(idx, 0, None)]
+    return pd.Series(np.where(idx >= 0, patches, np.nan), index=dates.index, dtype=object)
+
+
+def assign_patch(game_version, game_datetime_ms, calendar):
+    """Patch from game_version when it has one, otherwise from the calendar.
+    If neither works, the raw game_version string is kept so the problem
+    stays visible instead of being silently filled."""
+    patch = pd.Series(game_version).map(extract_patch)
+    placeholder = ~patch.str.fullmatch(PATCH_PATTERN)
+    inferred = patch_from_date(pd.Series(game_datetime_ms)[placeholder], calendar)
+    patch[placeholder] = inferred.fillna(patch[placeholder])
+    return patch
+
+
+def board_counters(df):
+    """Board-size counters derived from the composition columns. They carry no
+    information about *which* units/traits/items are played, only how big the
+    final board is, which mostly reflects how long the player survived. Used
+    as a baseline: a composition model should beat them to claim it learned
+    more than survival."""
+    champ_cols = [c for c in df.columns if c.startswith("champ__")]
+    trait_cols = [c for c in df.columns if c.startswith("trait__")]
+    item_cols = [c for c in df.columns if c.startswith("item__")]
+    return pd.DataFrame({
+        "n_champ": (df[champ_cols] > 0).sum(axis=1),
+        "sum_star": df[champ_cols].sum(axis=1),
+        "n_items": df[item_cols].sum(axis=1),
+        "n_traits": (df[trait_cols] > 0).sum(axis=1),
+        "sum_trait_tier": df[trait_cols].sum(axis=1),
+    }, index=df.index)
 
 
 def load_base(engine):
@@ -38,7 +92,7 @@ def load_base(engine):
         """,
         engine,
     )
-    df["patch"] = df["game_version"].map(extract_patch)
+    df["patch"] = assign_patch(df["game_version"], df["game_datetime"], load_patch_calendar())
     return df.drop(columns="game_version")
 
 
