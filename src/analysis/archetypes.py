@@ -1,12 +1,14 @@
 import numpy as np
 import pandas as pd
 from sklearn.cluster import KMeans
-from sklearn.metrics import silhouette_score
+from sklearn.metrics import adjusted_rand_score, silhouette_score
 
 from set_paths import feature_matrix_path, set_suffixed_path
 
 FEATURE_MATRIX_PATH = feature_matrix_path()
-K_CANDIDATES = [8, 10, 12, 15, 18, 22, 26, 30]
+K_CANDIDATES = [8, 10, 12, 15, 18, 20, 22, 26, 30]
+STABILITY_K = [18, 20, 22]
+STABILITY_RUNS = 5
 SCAN_SAMPLE_SIZE = 15000
 RANDOM_STATE = 42
 
@@ -28,6 +30,33 @@ def scan_k(X, k_candidates=K_CANDIDATES, sample_size=SCAN_SAMPLE_SIZE, random_st
         results.append({"k": k, "inertia": km.inertia_, "silhouette": sil})
         print(f"  k={k:2d}  inertia={km.inertia_:10.1f}  silhouette={sil:.4f}")
     return pd.DataFrame(results)
+
+
+def cluster_stability(X, k, n_runs=STABILITY_RUNS, sample_size=SCAN_SAMPLE_SIZE * 2,
+                      random_state=RANDOM_STATE):
+    """How reproducible the clustering is: KMeans is fitted n_runs times, each
+    on a different random subsample with a different seed, and every fit
+    labels the same evaluation set. Agreement between runs is measured by the
+    adjusted Rand index (1 = identical partitions, 0 = chance level).
+    Silhouette says how separated the clusters are; this says whether they
+    come back when the data and seed change."""
+    rng = np.random.default_rng(random_state)
+    eval_set = X.sample(n=min(sample_size, len(X)), random_state=random_state)
+    labelings = []
+    for _ in range(n_runs):
+        seed = int(rng.integers(0, 2**31 - 1))
+        fit_sample = X.sample(n=min(sample_size, len(X)), random_state=seed)
+        km = KMeans(n_clusters=k, random_state=seed, n_init=10).fit(fit_sample)
+        labelings.append(km.predict(eval_set))
+    scores = [
+        adjusted_rand_score(labelings[i], labelings[j])
+        for i in range(n_runs) for j in range(i + 1, n_runs)
+    ]
+    return {"k": k, "ari_mean": float(np.mean(scores)), "ari_min": float(np.min(scores))}
+
+
+def stability_table(X, k_values=STABILITY_K, **kwargs):
+    return pd.DataFrame([cluster_stability(X, k, **kwargs) for k in k_values])
 
 
 def fit_final(X, k, random_state=RANDOM_STATE):
@@ -129,6 +158,11 @@ def main(k=20):
     print(f"  {len(X)} rows, {len(comp_cols)} composition columns "
           f"({sum(c.startswith('trait__') for c in comp_cols)} traits, "
           f"{sum(c.startswith('champ__') for c in comp_cols)} champions)")
+
+    print(f"\nCluster stability (ARI between {STABILITY_RUNS} runs on different subsamples/seeds)")
+    stability = stability_table(X)
+    print(stability.round(3).to_string(index=False))
+    stability.to_csv(set_suffixed_path("archetype_stability", "csv"), index=False)
 
     print(f"\nFitting final KMeans with k={k} on the full dataset")
     km, labels = fit_final(X, k)
