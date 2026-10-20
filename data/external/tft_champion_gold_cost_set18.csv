@@ -1,0 +1,80 @@
+character_id,champion_name,rarity_seen,gold_cost,note
+DA_18_Akali_AD,Akali,0,1,
+DA_18_Camille,Camille,0,1,
+DA_Cinderling18,Cinderling,0,1,
+DA_Karma18,Karma,0,1,
+DA_18_Kobuko,Kobuko,0,1,
+DA_18_Leona,Leona,0,1,
+DA_18_Ornn,Ornn,0,1,
+DA_18_Rakan,Rakan,0,1,
+DA_18_RekSai,RekSai,0,1,
+DA_18_Sentry,Pebbles,0,1,"UNCONFIRMED: no id matching 'Pebbles' found in data; Sentry is the only unmatched 1-cost id, at a volume consistent with a real champion. Not verified against official Riot data."
+DA_18_Varus,Varus,0,1,
+DA_18_Veigar,Veigar,0,1,
+DA_18_Xayah,Xayah,0,1,
+DA_18_Yorick,Yorick,0,1,
+TFT18_Akali,Akali (duplicate id),0,1,"Rare duplicate id, 15 occurrences out of 137216 participants sampled. Likely a launch-week logging artifact rather than a distinct champion."
+DA_18_Alistar,Alistar,1,2,
+DA_18_Caitlyn,Caitlyn,1,2,
+DA_18_Elise,Elise,1,2,
+DA_18_EliseSpider,Elise (spider form),1,2,"Rare alternate id, 11 occurrences. Likely Elise's spider-transform combat state logged as a separate unit."
+DA_Gromp18_AP,Gromp,1,2,
+DA_18_Kayle,Kayle,1,2,
+DA_18_LeBlanc,LeBlanc,1,2,
+DA_Murkwolf18,Murkwolf,1,2,
+DA_Scuttlecrab18,Scuttlecrab,1,2,
+DA_18_Sejuani,Sejuani,1,2,
+DA_18_Shen,Shen,1,2,
+DA_18_Teemo,Teemo,1,2,
+DA_18_Warwick,Warwick,1,2,
+DA_18_Yunara,Yunara,1,2,
+TFT18_Gromp,Gromp (duplicate id),1,2,"Rare duplicate id, 7 occurrences. Likely a launch-week logging artifact rather than a distinct champion."
+DA_18_Azir,Azir,2,3,
+DA_18_Cassiopeia,Cassiopeia,2,3,
+DA_18_Diana,Diana,2,3,
+DA_CrimsonRaptor18,Mama Beak,2,3,"UNCONFIRMED: no id matching 'Mama Beak' found in data; CrimsonRaptor is the only unmatched 3-cost id, and the name fits a bird-type jungle monster consistent with 'Mama Beak'. Not verified against official Riot data."
+DA_Fiddlesticks18,Fiddlesticks,2,3,
+DA_18_Hecarim,Hecarim,2,3,
+DA_18_KhaZix,Khazix,2,3,
+DA_Krug18,Krug,2,3,
+DA_KogMaw18_AD,Kogmaw,2,3,
+DA_18_MasterYi_AD,Master Yi,2,3,
+DA_18_Rammus,Rammus,2,3,
+DA_18_Rengar,Rengar,2,3,
+DA_18_Tristana,Tristana,2,3,
+DA_Vi18,Vi,2,3,
+TFT18_KogMaw,Kogmaw (duplicate id),2,3,"Rare duplicate id, 6 occurrences. Likely a launch-week logging artifact rather than a distinct champion."
+TFT18_MasterYi,Master Yi (duplicate id),2,3,"Rare duplicate id, 12 occurrences. Likely a launch-week logging artifact rather than a distinct champion."
+DA_18_Ahri,Ahri,3,4,
+DA_Amumu18,Amumu,3,4,
+DA_18_Aphelios,Aphelios,3,4,
+DA_Brambleback18,Brambleback,3,4,
+DA_18_Ezreal,Ezreal,3,4,
+DA_18_Lillia,Lillia,3,4,
+DA_18_Malphite,Malphite,3,4,
+DA_18_Morgana,Morgana,3,4,
+DA_Nidalee18_AP,Nidalee,3,4,
+DA_Sentinel18,Sentinel,3,4,
+DA_18_Sett,Sett,3,4,
+DA_18_Sivir,Sivir,3,4,
+DA_18_Soraka,Soraka,3,4,
+DA_18_Zyra,Zyra,3,4,
+TFT18_NidaleeCougar,Nidalee (cougar form),3,4,"Rare alternate id, 8 occurrences. Likely her cougar-transform combat state logged as a separate unit."
+DA_18_Alune,Alune,4,5,
+DA_18_Ashe,Ashe,4,5,
+DA_Draven18,Draven,4,5,
+DA_18_ElderDragon,Elder Dragon,4,5,
+DA_18_GnarSmall,Gnar,4,5,
+DA_18_Ivern,Ivern,4,5,
+DA_18_Kennen,Kennen,4,5,
+DA_18_Maokai,Maokai,4,5,
+DA_Taric18,Taric,4,5,
+DA_Lux18_Base,Lux (base form),4,5,"One of several trait-conditional Lux skins. The roster lists 9 named forms (Blossom, Coven, Elderwood, Blackthorn, Fae, Inferno, Lunar, Primal, Solar); 8 of 9 have now appeared in the data (all but Coven), most still very rare (1-7 occurrences) out of 314774 participants sampled."
+DA_18_Lux_Fae,Lux (Fae form),4,5,"Confirmed name match to roster, but only 1 occurrence in the data sampled so far."
+DA_18_Lux_Primal,Lux (Primal form),4,5,"Confirmed name match to roster, but only 1 occurrence in the data sampled so far."
+DA_Lux18_Blackthorn,Lux (Blackthorn form),4,5,"Confirmed name match to roster, but only 1 occurrence in the data sampled so far."
+DA_Lux18_Blossom,Lux (Blossom form),4,5,"Confirmed name match to roster, but only 1 occurrence in the data sampled so far."
+DA_18_Lux_Moonbeam,Lux (possibly Lunar form),4,5,"UNCONFIRMED: internal name does not match any roster name directly. 'Moonbeam' plausibly corresponds to the roster's 'Lunar' form, but this is a guess, not verified against official Riot data. Only 1 occurrence in the data sampled so far."
+DA_18_Lux_Sunbeam,Lux (possibly Solar form),4,5,"UNCONFIRMED: internal name does not match any roster name directly. 'Sunbeam' plausibly corresponds to the roster's 'Solar' form, but this is a guess, not verified against official Riot data. Only 1 occurrence in the data sampled so far."
+DA_18_Lux_Elderwood,Lux (Elderwood form),4,5,Confirmed name match to roster. 7 occurrences in the data as of 314774 participants sampled.
+DA_18_Lux_Inferno,Lux (Inferno form),4,5,Confirmed name match to roster. 1 occurrence in the data as of 314774 participants sampled.
