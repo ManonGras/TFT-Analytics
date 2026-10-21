@@ -51,9 +51,15 @@ def get_summoner_by_id(summoner_id):
     return _get(url).json()
 
 
-def get_match_ids_by_puuid(puuid, count=20):
+def get_match_ids_by_puuid(puuid, count=20, start_time=None, end_time=None):
+    """start_time / end_time: epoch seconds (UTC), both optional."""
     url = f"https://{REGION_ROUTING}.api.riotgames.com/tft/match/v1/matches/by-puuid/{puuid}/ids"
-    return _get(url, params={"count": count}).json()
+    params = {"count": count}
+    if start_time is not None:
+        params["startTime"] = start_time
+    if end_time is not None:
+        params["endTime"] = end_time
+    return _get(url, params=params).json()
 
 
 def get_match_by_id(match_id):

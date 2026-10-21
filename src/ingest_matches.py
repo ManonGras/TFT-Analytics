@@ -1,6 +1,7 @@
 import argparse
 import json
 import time
+from datetime import datetime, timezone
 from pathlib import Path
 
 from tqdm import tqdm
@@ -138,11 +139,21 @@ def collect_seed_puuids(players_per_tier):
 
     return seed_by_tier
 
-def collect_match_ids(seed_by_tier, matches_per_player):
+def utc_timestamp(value):
+    """'2026-09-23' or '2026-10-21T08:00' read as UTC -> epoch seconds."""
+    try:
+        dt = datetime.fromisoformat(value)
+    except ValueError:
+        raise argparse.ArgumentTypeError(f"invalid date '{value}' (expected YYYY-MM-DD or YYYY-MM-DDTHH:MM, UTC)")
+    return int(dt.replace(tzinfo=timezone.utc).timestamp())
+
+def collect_match_ids(seed_by_tier, matches_per_player, start_time=None, end_time=None):
     match_tier = {}
     for tier, puuids in seed_by_tier.items():
         for puuid in tqdm(puuids, desc=f"Retrieving matches list ({tier})"):
-            for match_id in get_match_ids_by_puuid(puuid, count=matches_per_player):
+            match_ids = get_match_ids_by_puuid(puuid, count=matches_per_player,
+                                               start_time=start_time, end_time=end_time)
+            for match_id in match_ids:
                 match_tier.setdefault(match_id, tier)
             time.sleep(REQUEST_DELAY_SECONDS)
     return match_tier
@@ -201,7 +212,13 @@ def main():
                          help="Number of seed players per rank tier (default: 5).")
     parser.add_argument("--matches-per-player", type=int, default=20,
                          help="Number of recent matches per player (default: 20)")
+    parser.add_argument("--start-time", type=utc_timestamp, default=None,
+                         help="Only matches played after this UTC date/time (YYYY-MM-DD or YYYY-MM-DDTHH:MM).")
+    parser.add_argument("--end-time", type=utc_timestamp, default=None,
+                         help="Only matches played before this UTC date/time (YYYY-MM-DD or YYYY-MM-DDTHH:MM).")
     args = parser.parse_args()
+    if args.start_time is not None and args.end_time is not None and args.start_time >= args.end_time:
+        parser.error("--start-time must be before --end-time.")
 
     init_db()
     session = get_session()
@@ -210,7 +227,8 @@ def main():
     for tier, puuids in seed_by_tier.items():
         print(f"  {tier}: {len(puuids)} seed players")
 
-    match_tier = collect_match_ids(seed_by_tier, args.matches_per_player)
+    match_tier = collect_match_ids(seed_by_tier, args.matches_per_player,
+                                   start_time=args.start_time, end_time=args.end_time)
     ingest_matches(match_tier, session)
 
     session.close()
