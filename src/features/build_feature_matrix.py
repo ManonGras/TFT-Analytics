@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 
 from db import get_engine
-from set_paths import excluded_character_ids, feature_matrix_path
+from set_paths import excluded_character_ids, feature_matrix_path, study_end_ms
 
 # Riot fills empty slots in low-population lobbies with AI opponents, tagged
 # with this literal puuid. They are not real players and must not appear in
@@ -70,7 +70,14 @@ def board_counters(df):
     }, index=df.index)
 
 
-def load_base(engine):
+def load_base(engine, start_ms=None, end_ms=None):
+    """Human participants, optionally restricted to start_ms <= game_datetime
+    < end_ms (ms, UTC)."""
+    date_filter = ""
+    if start_ms is not None:
+        date_filter += f" AND m.game_datetime >= {int(start_ms)}"
+    if end_ms is not None:
+        date_filter += f" AND m.game_datetime < {int(end_ms)}"
     df = pd.read_sql(
         f"""
         SELECT
@@ -88,7 +95,7 @@ def load_base(engine):
             m.game_version
         FROM participants p
         JOIN matches m ON m.match_id = p.match_id
-        WHERE p.puuid != '{BOT_PUUID}'
+        WHERE p.puuid != '{BOT_PUUID}'{date_filter}
         """,
         engine,
     )
@@ -153,26 +160,28 @@ def load_champion_features(engine):
     return wide
 
 
-def main():
-    engine = get_engine()
+def build_matrix(engine, start_ms=None, end_ms=None, verbose=True):
+    """One row per human participant in the date range, with the trait, item
+    and champion columns. Feature columns that are all zero in the range (units
+    or items that only exist in other patches) are dropped."""
+    log = print if verbose else (lambda *args: None)
+    log("Loading base participant data")
+    base = load_base(engine, start_ms=start_ms, end_ms=end_ms)
+    log(f"  {len(base)} participants")
 
-    print("Loading base participant data")
-    base = load_base(engine)
-    print(f"  {len(base)} participants")
-
-    print("Loading trait features...")
+    log("Loading trait features...")
     traits = load_trait_features(engine)
-    print(f"  {traits.shape[1]} trait columns")
+    log(f"  {traits.shape[1]} trait columns")
 
-    print("Loading item features")
+    log("Loading item features")
     items = load_item_features(engine)
-    print(f"  {items.shape[1]} item columns")
+    log(f"  {items.shape[1]} item columns")
 
-    print("Loading champion features")
+    log("Loading champion features")
     champs = load_champion_features(engine)
-    print(f"  {champs.shape[1]} champion columns")
+    log(f"  {champs.shape[1]} champion columns")
 
-    print("Merging")
+    log("Merging")
     matrix = (
         base.set_index("participant_id")
         .join(traits, how="left")
@@ -181,6 +190,13 @@ def main():
     )
     feature_cols = [c for c in matrix.columns if c.startswith(("trait__", "item__", "champ__"))]
     matrix[feature_cols] = matrix[feature_cols].fillna(0)
+    empty_cols = [c for c in feature_cols if not matrix[c].any()]
+    return matrix.drop(columns=empty_cols)
+
+
+def main():
+    engine = get_engine()
+    matrix = build_matrix(engine, end_ms=study_end_ms())
 
     out_path = feature_matrix_path()
     matrix.to_csv(out_path)

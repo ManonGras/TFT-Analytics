@@ -25,13 +25,16 @@ CATEGORICAL_COLS = ["seed_tier", "patch"]
 # are linked to placement.
 #
 # Their correlation with placement is quite high (0.51 to 0.89), so they
-# would cause data leakage. gold_left is kept because its correlation is
-# much lower (0.13) and it represents the player's economy. game_datetime is
-# only used to build the train/test split, not as a model feature.
+# would cause data leakage. gold_left is dropped too, although its
+# correlation is low (0.05 on Set 18): the winner almost never ends at 0 gold
+# (1.6% against about 25% for other places) because the game ends on their
+# win, so it marks the result rather than the player's economy. It was kept
+# on Set 17. game_datetime is only used to build the train/test split, not as
+# a model feature.
 DROP_COLS = [
     "participant_id", "match_id", "placement", "game_datetime",
     "last_round", "time_eliminated", "players_eliminated",
-    "total_damage_to_players", "level",
+    "total_damage_to_players", "level", "gold_left",
 ]
 
 
@@ -60,8 +63,11 @@ def humans_per_match(df):
     return df.groupby("match_id")["match_id"].transform("size")
 
 
-def load_and_prepare(full_lobbies_only=True):
-    df = pd.read_csv(feature_matrix_path())
+def load_and_prepare(full_lobbies_only=True, drop_cols=DROP_COLS):
+    # drop_cols can be narrowed to show what the leakage columns would do,
+    # on exactly the same rows and split. patch is read as text so "18.10"
+    # does not become 18.1.
+    df = pd.read_csv(feature_matrix_path(), dtype={"patch": str})
     if full_lobbies_only:
         df = df[humans_per_match(df) == FULL_LOBBY_SIZE]
 
@@ -69,7 +75,7 @@ def load_and_prepare(full_lobbies_only=True):
     is_test = df["game_datetime"] >= cutoff
     train_df, test_df = df[~is_test].copy(), df[is_test].copy()
 
-    feature_cols = [c for c in df.columns if c not in DROP_COLS]
+    feature_cols = [c for c in df.columns if c not in drop_cols]
     X_train, y_train = train_df[feature_cols], train_df["placement"]
     X_test, y_test = test_df[feature_cols], test_df["placement"]
     X_train, X_test = prepare_categoricals(X_train, X_test)
@@ -97,6 +103,12 @@ def train(X_train, y_train, random_state=42):
     return model
 
 
+def clip_placement(y_pred):
+    # The regressor can predict outside 1-8 (e.g. 9.7 for a very weak board);
+    # those predictions are bounded before computing any error.
+    return np.clip(y_pred, 1, 8)
+
+
 def top4_accuracy_rounded(y_true, y_pred):
     # Each prediction judged on its own: rounded predicted placement <= 4.
     rounded = np.clip(np.round(y_pred), 1, 8)
@@ -122,7 +134,7 @@ def top4_accuracy_within_match(y_true, y_pred, match_ids, random_state=0):
 
 
 def report(y_true, y_pred, label, match_ids=None):
-    mae = mean_absolute_error(y_true, y_pred)
+    mae = mean_absolute_error(y_true, clip_placement(y_pred))
     baseline_mae = mean_absolute_error(y_true, np.full_like(y_pred, y_true.mean(), dtype=float))
     print(f"\n--- {label} (n={len(y_true)}) ---")
     print(f"  MAE: {mae:.3f}  (baseline, always predict mean placement: {baseline_mae:.3f})")
@@ -144,7 +156,7 @@ def main():
     model = train(X_train, y_train)
 
     report(y_train, model.predict(X_train), "Train", train_df["match_id"])
-    pred_test = model.predict(X_test)
+    pred_test = clip_placement(model.predict(X_test))
     report(y_test, pred_test, "Test (held-out future matches)", test_df["match_id"])
 
     print("\n--- Test MAE by day ---")

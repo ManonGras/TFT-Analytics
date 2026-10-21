@@ -4,7 +4,7 @@ import shap
 from sklearn.metrics import mean_absolute_error
 
 from set_paths import set_suffixed_path
-from modeling.train_model import load_and_prepare, train
+from modeling.train_model import clip_placement, load_and_prepare, train
 
 SAMPLE_SIZE = 2000
 
@@ -54,8 +54,8 @@ def mae_without_column(X_train, y_train, X_test, y_test, column, random_state=42
         X_test.drop(columns=column)
     )
     return {
-        "mae_with": mean_absolute_error(y_test, with_col),
-        "mae_without": mean_absolute_error(y_test, without),
+        "mae_with": mean_absolute_error(y_test, clip_placement(with_col)),
+        "mae_without": mean_absolute_error(y_test, clip_placement(without)),
     }
 
 

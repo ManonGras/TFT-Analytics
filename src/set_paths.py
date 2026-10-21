@@ -2,7 +2,15 @@ from pathlib import Path
 
 import pandas as pd
 
-from config import DATABASE_PATH
+from config import DATABASE_PATH, TFT_SET_NUMBER
+
+# End of the study window (exclusive, UTC). The database keeps receiving later
+# matches (used as an out-of-patch test), but the main analysis is frozen on
+# this window so its numbers do not move when new matches are ingested.
+# Set 18: patch 18.1 only (18.2 released on 2026-09-10).
+STUDY_END_BY_SET = {
+    18: "2026-09-08",
+}
 
 # Some units are summons, PvE ennemies, etc and arent related to players strategic decisions
 #  they shoudnt be treated as draftable champions.
@@ -40,6 +48,15 @@ def excluded_character_ids(engine):
         return ()
 
     return EXCLUDED_CHARACTER_IDS_BY_SET[set_number]
+
+
+def study_end_ms():
+    """End of the study window as game_datetime (ms, UTC), or None when the
+    set has no fixed window."""
+    end = STUDY_END_BY_SET.get(TFT_SET_NUMBER)
+    if end is None:
+        return None
+    return int(pd.Timestamp(end, tz="UTC").timestamp() * 1000)
 
 
 def set_suffixed_path(base_name, ext):

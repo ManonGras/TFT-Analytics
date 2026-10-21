@@ -6,7 +6,7 @@ from sklearn.metrics import mean_absolute_error, r2_score
 from features.build_feature_matrix import board_counters
 from set_paths import set_suffixed_path
 from modeling.train_model import (
-    load_and_prepare, train, top4_accuracy_rounded, top4_accuracy_within_match,
+    clip_placement, load_and_prepare, train, top4_accuracy_rounded, top4_accuracy_within_match,
 )
 
 COMPOSITION_PREFIXES = ("champ__", "trait__", "item__")
@@ -21,7 +21,7 @@ def _score(name, n_features, y_test, pred, match_ids):
     return {
         "model": name,
         "n_features": n_features,
-        "mae": mean_absolute_error(y_test, pred),
+        "mae": mean_absolute_error(y_test, clip_placement(pred)),
         "top4_rounded": top4_accuracy_rounded(y_test, pred),
         "top4_within_match": top4_accuracy_within_match(y_test, pred, match_ids),
     }
