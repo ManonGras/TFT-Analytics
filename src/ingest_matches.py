@@ -45,6 +45,23 @@ def save_raw_match(match_id, match_json):
         path.write_text(json.dumps(match_json), encoding="utf-8")
     return path
 
+def load_raw_match(match_id, raw_dir=RAW_DIR):
+    """The saved JSON of a match, or None if it was never downloaded. Matches
+    of another set or queue are saved but never enter the DB, so without this
+    they would be downloaded again at every run."""
+    path = raw_dir / f"{match_id}.json"
+    if not path.exists():
+        return None
+    return json.loads(path.read_text(encoding="utf-8"))
+
+def skip_reason(info):
+    """Why a match stays out of the DB ("other_set", "other_queue"), or None."""
+    if info.get("tft_set_number") != TARGET_SET_NUMBER:
+        return "other_set"
+    if info.get("queue_id", info.get("queueId")) != RANKED_QUEUE_ID:
+        return "other_queue"
+    return None
+
 def parse_match(match_json, seed_tier=None) -> Match:
     info = match_json["info"]
     metadata = match_json["metadata"]
@@ -168,16 +185,20 @@ def ingest_matches(match_tier, session):
     skipped_other_queue = 0
     failures = []
     for match_id, tier in tqdm(to_fetch.items(), desc="Ingesting matches"):
+        downloaded = False
         try:
-            match_json = get_match_by_id(match_id)
-            save_raw_match(match_id, match_json)
-            info = match_json["info"]
+            match_json = load_raw_match(match_id)
+            if match_json is None:
+                downloaded = True  # set before the call: a failed request counts too
+                match_json = get_match_by_id(match_id)
+                save_raw_match(match_id, match_json)
+            reason = skip_reason(match_json["info"])
 
-            if info.get("tft_set_number") != TARGET_SET_NUMBER:
+            if reason == "other_set":
                 skipped_other_set += 1
                 continue
 
-            if info.get("queue_id", info.get("queueId")) != RANKED_QUEUE_ID:
+            if reason == "other_queue":
                 skipped_other_queue += 1
                 continue
 
@@ -190,7 +211,11 @@ def ingest_matches(match_tier, session):
         except Exception as exc:
             session.rollback()
             failures.append((match_id, f"parsing error: {exc}"))
-        time.sleep(REQUEST_DELAY_SECONDS)
+        finally:
+            # Only API calls count against the rate limit; a match read from
+            # data/raw needs no wait.
+            if downloaded:
+                time.sleep(REQUEST_DELAY_SECONDS)
 
     if skipped_other_set:
         print(f"\nSkipped {skipped_other_set} matches from a different set "

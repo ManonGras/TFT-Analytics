@@ -112,12 +112,12 @@ class ParticipantAugment(Base):
     participant: Mapped["Participant"] = relationship(back_populates="augments")
 
 
-def get_engine():
-    return create_engine(f"sqlite:///{DATABASE_PATH}")
+def get_engine(path=DATABASE_PATH):
+    return create_engine(f"sqlite:///{path}")
 
 
-def init_db():
-    engine = get_engine()
+def init_db(path=DATABASE_PATH):
+    engine = get_engine(path)
     Base.metadata.create_all(engine)
 
     inspector = inspect(engine)
@@ -132,8 +132,8 @@ def init_db():
     return engine
 
 
-def get_session():
-    engine = get_engine()
+def get_session(path=DATABASE_PATH):
+    engine = get_engine(path)
     Session = sessionmaker(bind=engine)
     return Session()
 
